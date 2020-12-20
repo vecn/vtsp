@@ -2,6 +2,22 @@
 
 #include "vtsp.h"
 
+#define MIN_POINTS 3
+#define MAX_POINTS 20000000
+
+
+#define TRY(function_call) \
+	do { \
+		int status = (function_call); \
+		if (0 != status) { \
+			return status; \
+		} \
+	} while(0)
+
+
+static int validate_input(const vtsp_points_t *input,
+			  const vtsp_depend_t *depend);
+
 
 uint64_t vtsp_sizeof_operational_memory()
 {
@@ -9,15 +25,31 @@ uint64_t vtsp_sizeof_operational_memory()
 }
 
 vtsp_status_t vtsp_solve(const vtsp_points_t *input, vtsp_perm_t *output,
-			 vtsp_depend_t *dependencies)
+			 vtsp_depend_t *depend)
 {
-	if (0 != validate_input(input, dependencies)) {
+	TRY( validate_input(input, depend) );
+        TRY( solve(input, output, depend) );
+	return SUCCESS;
+}
+
+static int validate_input(const vtsp_points_t *input,
+			  const vtsp_depend_t *depend)
+{
+	if (input->points < MIN_POINTS) {
+		log(depend, "Num of points must be at least 3.");
 		return MALFORMED_INPUT;
 	}
-	if (0 != solve(input, output, dependencies)) {
-		return ERROR;
+	
+	if (input->points > MAX_POINTS) {
+		log(depend, "Num of points is bigger than max.");
+		return MALFORMED_INPUT;
 	}
 	return SUCCESS;
+}
+
+static void log(const vtsp_depend_t *depend, const char *msg)
+{
+	
 }
 
 static int solve()
