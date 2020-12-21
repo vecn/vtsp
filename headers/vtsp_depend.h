@@ -7,7 +7,7 @@
 
 typedef struct {
 	void *ctx;
-	int (*logger)(void *ctx, const char *msg);
+	int (*log)(void *ctx, const char *msg);
 } vtsp_binding_logger_t;
 
 

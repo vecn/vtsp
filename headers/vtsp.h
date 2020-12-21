@@ -8,10 +8,8 @@
 
 
 uint64_t vtsp_sizeof_operational_memory();
-vtsp_depend_t* vtsp_default_dependencies();
 
 vtsp_status_t vtsp_solve(const vtsp_points_t *input, vtsp_perm_t *output,
-			 vtsp_depend_t *dependencies,
-			 void *operational_memory);
+			 vtsp_depend_t *depend, void *op_mem);
 
 #endif
