@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 typedef enum {
-	SUCCESS,
+	SUCCESS = 0,
 	MALFORMED_INPUT,
-	ERROR
+	ERROR = 100000
 } vtsp_status_t;
 
 typedef struct {

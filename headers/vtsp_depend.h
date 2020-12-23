@@ -28,12 +28,12 @@ typedef struct {
 	void *ctx;
 	int (*get_convex_envelope)(void* ctx, const vtsp_points_t *input,
 				   vtsp_perm_t *output);
-} vtsp_binding_envelop_t;
+} vtsp_binding_envelope_t;
 
 typedef struct {
 	void *ctx;
 	int (*get_mesh)(void* ctx, const vtsp_points_t *input,
-			vtsp_mesh_t *mesh)
+			vtsp_mesh_t *mesh);
 } vtsp_binding_mesher_t;
 
 typedef struct {
@@ -57,6 +57,6 @@ typedef struct {
 	vtsp_binding_mesher_t mesher;
 	vtsp_binding_heat_t heat;
 	vtsp_binding_integral_t integral;
-} vstp_depend_t;
+} vtsp_depend_t;
 
 #endif
