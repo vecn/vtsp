@@ -3,32 +3,11 @@
 #include <string.h>
 
 #include "vtsp.h"
+#include "try_macros.h"
 
 #define MIN_POINTS 3
 #define MAX_POINTS 20000000
 
-#define TRY(function_call) \
-	do { \
-		int __status__ = (function_call); \
-		if (0 != __status__) {     \
-			return __status__; \
-		} \
-	} while(0)
-
-#define TRY_SET(function_call, error_code)    \
-	do { \
-		if (0 != (function_call)) {   \
-			return (error_code);  \
-		} \
-	} while(0)
-
-
-#define TRY_NONEG(function_call, error_code)  \
-	do { \
-		if (0 > (function_call)) {    \
-			return (error_code);  \
-		} \
-	} while(0)
 
 enum {
 	ERROR_INTERNAL = ERROR,

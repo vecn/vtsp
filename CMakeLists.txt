@@ -17,8 +17,8 @@ add_library(vtsp SHARED $<TARGET_OBJECTS:objlib>)
 add_library(vtsp_static STATIC $<TARGET_OBJECTS:objlib>)
 set_target_properties(vtsp_static PROPERTIES OUTPUT_NAME vtsp)
 
-# Build Unit Tests
-#file(GLOB_RECURSE sources_tests "tests/*.c")
-#add_executable(tests ${sources_tests} tests/main.c)
-#target_compile_options(utests PUBLIC -std=c99 -Wall)
-#target_link_libraries(utests cunit nbots m)
+# Build Tests
+file(GLOB_RECURSE sources_tests "tests/*.c")
+add_executable(tests ${sources_tests} tests/test.c)
+target_compile_options(tests PUBLIC -std=c99 -Wall)
+target_link_libraries(tests vtsp m)
