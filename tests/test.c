@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 
 #include "try_macros.h"
@@ -11,6 +12,7 @@ enum {
 
 static int load_points(vtsp_points_t *input);
 static int allocate_output(const vtsp_points_t *input, vtsp_perm_t *output);
+
 static int bind_dependencies(vtsp_depend_t *depend);
 static int bind_logger(vtsp_binding_logger_t *logger);
 static int bind_drawer(vtsp_binding_drawer_t *drawer);
@@ -19,6 +21,8 @@ static int bind_envelope(vtsp_binding_envelope_t *envelope);
 static int bind_mesher(vtsp_binding_mesher_t *mesher);
 static int bind_heat(vtsp_binding_heat_t *heat);
 static int bind_integral(vtsp_binding_integral_t *integral);
+
+static int bind_log(void *ctx, const char *msg);
 
 int main(int argc, const char* argv[])
 {
@@ -79,7 +83,8 @@ static int bind_dependencies(vtsp_depend_t *depend)
 
 static int bind_logger(vtsp_binding_logger_t *logger)
 {
-	// Bind
+	logger->ctx = "logfile.txt";
+	logger->log = &bind_log;
 	return SUCCESS;
 }
 
@@ -116,5 +121,15 @@ static int bind_heat(vtsp_binding_heat_t *heat)
 static int bind_integral(vtsp_binding_integral_t *integral)
 {
 	// Bind
+	return SUCCESS;
+}
+
+static int bind_log(void *ctx, const char *msg) {
+	FILE *fp;
+	TRY_PTR(  fopen((char*) ctx, "a"), fp, ERROR );
+	
+	TRY_NONEG( fprintf(fp, "%s\n", msg), ERROR );
+
+	TRY( fclose(fp) );
 	return SUCCESS;
 }
