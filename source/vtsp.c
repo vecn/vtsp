@@ -97,8 +97,16 @@ static int get_convex_envelope(const vtsp_points_t *input, vtsp_perm_t *output,
 	return SUCCESS;
 }
 
-static int log_perm(vtsp_depend_t *depend,  vtsp_perm_t *output,
-		    const char *prefix) {
-	// LOG  indices in convex envelope (lines 100 length
+static int log_perm(vtsp_depend_t *depend,  vtsp_perm_t *perm,
+		    const char *prefix)
+{
+	char msg[100];
+	uint32_t i;
+	TRY_NONEG( sprintf(msg, "%s:", prefix), ERROR_SPRINTF );
+	TRY( write_log(depend, msg) );
+	for (i = 0; i < perm->num; i++) {
+		TRY_NONEG( sprintf(msg, "  %u", perm->index[i]), ERROR_SPRINTF );
+		TRY( write_log(depend, msg) );
+	}
 	return SUCCESS;
 }
