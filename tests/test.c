@@ -80,13 +80,13 @@ static int state_clean(state_t *state)
 
 static int load_points(vtsp_points_t *input)
 {
-	size_t size = input->num * 2 * sizeof(*(input->coord));
-	TRY_PTR( malloc(size), input->coord, ERROR_MALLOC );
+	size_t size = input->num * sizeof(*(input->pts));
+	TRY_PTR( malloc(size), input->pts, ERROR_MALLOC );
 
 	int i;
 	for (i = 0; i < input->num; i++) {
-		input->coord[i * 2] = i;
-		input->coord[i*2+1] = i*i;
+		input->pts[i].x = i;
+		input->pts[i].y = i*i;
 	}
 	
 	return SUCCESS;

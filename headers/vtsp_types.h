@@ -3,15 +3,20 @@
 
 #include <stdint.h>
 
-typedef enum {
+enum {
 	SUCCESS = 0,
 	MALFORMED_INPUT,
 	ERROR = 100000
-} vtsp_status_t;
+};
+
+typedef struct {
+	float x;
+	float y;
+} vtsp_point_t;
 
 typedef struct {
 	uint32_t num;
-	float *coord;
+	vtsp_point_t *pts;
 } vtsp_points_t;
 
 typedef struct {

@@ -17,6 +17,9 @@ add_library(vtsp SHARED $<TARGET_OBJECTS:objlib>)
 add_library(vtsp_static STATIC $<TARGET_OBJECTS:objlib>)
 set_target_properties(vtsp_static PROPERTIES OUTPUT_NAME vtsp)
 
+# Dependencies
+include_directories("../nbots/headers")
+
 # Build Tests
 file(GLOB_RECURSE sources_tests "tests/*.c")
 add_executable(tests ${sources_tests} tests/test.c)
