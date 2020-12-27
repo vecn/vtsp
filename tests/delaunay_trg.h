@@ -3,11 +3,13 @@
 
 #include <stdint.h>
 
-enum {
+#define DMS_NO_ADJ (-1)
+
+typedef enum {
 	SUCCESS = 0,
 	BAD_INPUT,
 	ERROR
-}
+} dms_status_t;
 
 typedef struct {
 	float x;
@@ -20,17 +22,22 @@ typedef struct {
 } dms_points_t;
 
 typedef struct {
-	uint32_t v1, v2;
+	uint32_t p1, p2;
 } dms_sgm_t;
 
 typedef struct {
-	uint32_t num;
-	dms_sgm_t *data;
-} dms_sgms_t;
+	uint32_t n1, n2; /* Nodes connecting mesh edge */
+	uint32_t t1, t2; /* Triangles adjacent to mesh */
+} dms_edge_t;
 
 typedef struct {
-	uint32_t v1, v2, v3; /* Vertices */
-	uint32_t t1, t2, t3; /* Adjacent triangles */
+	uint32_t num;
+	dms_edge_t *data;
+} dms_edges_t;
+
+typedef struct {
+	uint32_t n1, n2, n3; /* Nodes forming triangle (CCW) */
+	uint32_t t1, t2, t3; /* Adjacent triangles (CCW) */
 } dms_trg_t;
 
 typedef struct {
@@ -45,17 +52,15 @@ typedef struct {
 } dms_perm_t;
 
 typedef struct {
-	dms_points_t vtx;
-	dms_sgms_t sgm;
-	dms_trgs_t trg;
+	dms_points_t nodes;
+	dms_edges_t edges;
+	dms_trgs_t trgs;
 } dms_mesh_t;
 
 int dms_get_convex_envelope(const dms_points_t *input, dms_perm_t *output);
 
-int dms_get_delaunay_trg(const dms_points_t *input, dms_mesh_t *output);
-
-int dms_get_constrained_delaunay_trg(const dms_points_t *input,
-				     const dms_sgms_t *constraints,
-				     dms_mesh_t *output);
+int dms_get_delaunay_trg(const dms_points_t *input,
+			 const dms_edges_t *constraints,
+			 dms_mesh_t *output);
 
 #endif

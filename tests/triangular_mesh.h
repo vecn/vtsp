@@ -5,14 +5,11 @@
 #include <stdint.h>
 
 #include "delaunay_trg.h"
-
-#define DMS_NO_ADJ (-1)
   
 typedef struct {
 	dms_points_t vtx;
-	dms_perm_t envelope;
-	uint32_t nholes;
-	dms_perm_t *holes;
+	dms_sgms_t sgm;
+	dms_points_t holes;
 } dms_solid_t;
 
 typedef struct {
@@ -30,14 +27,10 @@ typedef struct {
 } dms_extra_refine_t;
 
 typedef struct {
-	dms_perm_t map_vtx;
-	// PENDING Mapping of envelope and holes
-} dms_map_solid_to_mesh_t;
-
-typedef struct {
 	dms_solid_t solid;
 	dms_mesh_t mesh;
-	dms_map_solid_to_mesh_t map;
+	dms_perm_t map_vtx;  /* Map solid's vertices to mesh nodes */
+	dms_perm_t *map_sgm; /* Map solid's segments to mesh edges */
 } dms_xmesh_t;
 
 int dms_get_mesh(const dms_solid_t *input,
