@@ -7,6 +7,16 @@
 #include "delaunay_trg.h"
   
 typedef struct {
+	uint32_t p1, p2; /* Points forming segment */
+} dms_sgm_t;
+
+
+typedef struct {
+	uint32_t num;
+	dms_sgm_t *data;
+} dms_sgms_t;
+
+typedef struct {
 	dms_points_t vtx;
 	dms_sgms_t sgm;
 	dms_points_t holes;
@@ -14,6 +24,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t ntrg;
+	uint32_t nedg;
 	uint32_t nvtx;
 	float v1[2], v2[2], v3[2];
 	bool is_s1_boundary;
@@ -23,7 +34,8 @@ typedef struct {
 
 typedef struct {
 	void *ctx;
-	int (*should_split_trg)(void *ctx, const dms_trg_ctx_t *in, bool* out),
+	uint32_t max_vtx;
+	int (*should_split_trg)(void *ctx, const dms_trg_ctx_t *in, bool* out);
 } dms_extra_refine_t;
 
 typedef struct {
@@ -33,8 +45,17 @@ typedef struct {
 	dms_perm_t *map_sgm; /* Map solid's segments to mesh edges */
 } dms_xmesh_t;
 
+
+int dms_verify_solid_sizeof_opmem(const dms_solid_t *input, uint32_t *output);
+int dms_verify_solid(const dms_solid_t *input, char error_msg[100],
+		     void *op_mem);
+
+int dms_get_mesh_sizeof_opmem(const dms_solid_t *input,
+			      const dms_extra_refine_t *refine,
+			      uint32_t *output);
 int dms_get_mesh(const dms_solid_t *input,
 		 const dms_extra_refine_t *refine,
-		 const dms_xmesh_t *output);
+		 dms_xmesh_t *output,
+		 void *op_mem);
 
 #endif

@@ -34,4 +34,11 @@
 		} \
 	} while(0)
 
+#define THROW(condition, error)          \
+	do { \
+		if (condition) {         \
+			return (error);  \
+		} \
+	} while(0)
+
 #endif

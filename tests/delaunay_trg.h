@@ -16,10 +16,6 @@ typedef struct {
 } dms_points_t;
 
 typedef struct {
-	uint32_t p1, p2;
-} dms_sgm_t;
-
-typedef struct {
 	uint32_t n1, n2; /* Nodes connecting mesh edge */
 	uint32_t t1, t2; /* Triangles adjacent to mesh */
 } dms_edge_t;

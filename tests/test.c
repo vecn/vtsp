@@ -6,6 +6,7 @@
 #include "vtsp.h"
 
 #include "delaunay_trg.h"
+#include "triangular_mesh.h"
 
 enum {
 	ERROR_MALLOC = 100
@@ -40,8 +41,9 @@ static int bind_draw_state(void *ctx, const vtsp_points_t *points,
 static int bind_report_progress(void *ctx, float percent);
 static int bind_get_convex_envelope(void* ctx, const vtsp_points_t *input,
 				    vtsp_perm_t *output);
-static int bind_get_mesh(void* ctx, const vtsp_points_t *input,
-			 vtsp_mesh_t *mesh);
+static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
+			 const vtsp_perm_t *input_envelope,
+			 vtsp_mesh_t *output);
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
 			   vtsp_field_t *output);
 static int bind_integrate_path(const vtsp_field_t *field,
@@ -216,7 +218,7 @@ static int bind_envelope(vtsp_binding_envelope_t *envelope)
 
 static int bind_mesher(vtsp_binding_mesher_t *mesher)
 {
-	mesher->ctx = 0; // PENDING
+	mesher->ctx = 0;
 	mesher->get_mesh = &bind_get_mesh;
 	return SUCCESS;
 }
@@ -290,11 +292,43 @@ ERROR_MALLOC:
 	return ERROR_MALLOC;
 }
 
-static int bind_get_mesh(void* ctx, const vtsp_points_t *input,
-			 vtsp_mesh_t *mesh)
+
+static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
+			 const vtsp_perm_t *input_envelope,
+			 vtsp_mesh_t *output)
 {
-	// PENDING
+	dms_solid_t dms_solid;
+	dms_extra_refine_t dms_refiner;
+	dms_xmesh_t dms_xmesh;
+	// PENDING CAST INPUT TO DMS INPUT
+	
+	uint32_t memsize;
+	void *opmem;
+	TRY( log_flush(stdout, "Verifying solid...") );
+	TRY( dms_verify_solid_sizeof_opmem(&dms_solid, &memsize) );
+	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+
+	char error_msg[100];
+	int status = dms_verify_solid(&dms_solid, error_msg, opmem);
+	free(opmem);
+	THROW(0 != status, status);
+	
+	TRY( log_flush(stdout, error_msg) );
+	
+
+	TRY( log_flush(stdout, "Meshing solid with DMS...") );
+	TRY( dms_get_mesh_sizeof_opmem(&dms_solid, &dms_refiner, &memsize) );
+	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+
+	status = dms_get_mesh(&dms_solid, &dms_refiner, &dms_xmesh, opmem);
+	free(opmem);
+	THROW(0 != status, status);
+
+	// PENDING CAST OUTPUT TO VTSP MESH
+	
 	return SUCCESS;
+ERROR_MALLOC:
+	return ERROR_MALLOC;
 }
 
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
