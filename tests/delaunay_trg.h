@@ -5,12 +5,6 @@
 
 #define DMS_NO_ADJ (-1)
 
-typedef enum {
-	SUCCESS = 0,
-	BAD_INPUT,
-	ERROR
-} dms_status_t;
-
 typedef struct {
 	float x;
 	float y;
@@ -57,10 +51,15 @@ typedef struct {
 	dms_trgs_t trgs;
 } dms_mesh_t;
 
-int dms_get_convex_envelope(const dms_points_t *input, dms_perm_t *output);
+int dms_get_convex_envelope_sizeof_opmem(const dms_points_t *input, uint32_t *output);
+int dms_get_convex_envelope(const dms_points_t *input,
+			    dms_perm_t *output,
+			    void *op_mem);
 
+int dms_get_delaunay_trg_sizeof_opmem(const dms_points_t *input, uint32_t *output);
 int dms_get_delaunay_trg(const dms_points_t *input,
 			 const dms_edges_t *constraints,
-			 dms_mesh_t *output);
+			 dms_mesh_t *output,
+			 void *op_mem);
 
 #endif

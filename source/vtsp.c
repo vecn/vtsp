@@ -25,9 +25,10 @@ static int get_convex_envelope(const vtsp_points_t *input, vtsp_perm_t *output,
 static int log_perm(vtsp_depend_t *depend,  vtsp_perm_t *output,
 		    const char *prefix);
 
-size_t vtsp_sizeof_operational_memory(void)
+int vtsp_solve_sizeof_opmem(const vtsp_points_t *input, uint32_t *output)
 {
-	return 1;
+	*output = 1;
+	return SUCCESS;
 }
 
 int vtsp_solve(const vtsp_points_t *input, vtsp_perm_t *output,
@@ -56,13 +57,17 @@ static int validate_input(const vtsp_points_t *input,
 		return MALFORMED_INPUT;
 	}
 	return SUCCESS;
+ERROR_SPRINTF:
+	return ERROR_SPRINTF;
 }
 
 static int write_log(const vtsp_depend_t *depend, const char *msg)
 {
-	TRY_SET( depend->logger.log(depend->logger.ctx, msg),
-		 ERROR_WRITE_LOG );
+	TRY_GOTO( depend->logger.log(depend->logger.ctx, msg),
+		  ERROR_WRITE_LOG );
 	return SUCCESS;
+ERROR_WRITE_LOG:
+	return ERROR_WRITE_LOG;
 }
 
 static int solve(const vtsp_points_t *input, vtsp_perm_t *output,
@@ -95,6 +100,8 @@ static int get_convex_envelope(const vtsp_points_t *input, vtsp_perm_t *output,
 	TRY( log_perm(depend, output, "Indices forming convex envelope") );
 	TRY( write_log(depend, msg) );
 	return SUCCESS;
+ERROR_SPRINTF:
+	return ERROR_SPRINTF;
 }
 
 static int log_perm(vtsp_depend_t *depend,  vtsp_perm_t *perm,
@@ -109,4 +116,6 @@ static int log_perm(vtsp_depend_t *depend,  vtsp_perm_t *perm,
 		TRY( write_log(depend, msg) );
 	}
 	return SUCCESS;
+ERROR_SPRINTF:
+	return ERROR_SPRINTF;
 }

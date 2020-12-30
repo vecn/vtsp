@@ -9,28 +9,29 @@
 		} \
 	} while(0)
 
-#define TRY_SET(function_call, error_code)    \
+
+#define TRY_GOTO(function_call, LABEL)       \
 	do { \
-		if (0 != (function_call)) {   \
-			return (error_code);  \
+		int __status__ = (function_call); \
+		if (0 != __status__) {     \
+			goto LABEL;        \
 		} \
 	} while(0)
 
 
-#define TRY_NONEG(function_call, error_code)  \
+#define TRY_NONEG(function_call, LABEL)       \
 	do { \
 		if (0 > (function_call)) {    \
-			return (error_code);  \
+			goto LABEL;           \
 		} \
 	} while(0)
 
-#define TRY_PTR(function_call, ptr, error_code)	\
+#define TRY_PTR(function_call, ptr, LABEL)    \
 	do { \
 		(ptr) = (function_call);      \
 		if (0 >= (ptr)) {	      \
-			return (error_code);  \
+			goto LABEL;           \
 		} \
 	} while(0)
-
 
 #endif
