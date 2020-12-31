@@ -1,12 +1,16 @@
-#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+
+#include "delaunay_trg.h"
+#include "triangular_mesh.h"
 
 #include "try_macros.h"
 #include "vtsp.h"
 
-#include "delaunay_trg.h"
-#include "triangular_mesh.h"
+
+#define MAX_MESH_VTX 2000
 
 enum {
 	ERROR_MALLOC = 100
@@ -49,6 +53,20 @@ static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
 static int bind_integrate_path(const vtsp_field_t *field,
 			       const vtsp_points_t *points,
 			       float* output);
+static int cast_alloc_input_to_dms_solid(const vtsp_points_t *input_pts,
+					 const vtsp_perm_t *input_envelope,
+					 dms_solid_t *output);
+static int free_dms_solid(dms_solid_t *input);
+
+static int opmem_dms_get_convex_envelope(const dms_points_t *input,
+					 dms_perm_t *output);
+static int opmem_dms_verify_solid(const dms_solid_t *input);
+static int opmem_dms_get_mesh(const dms_solid_t *input,
+			      const dms_extra_refine_t *refine,
+			      dms_xmesh_t *output);
+
+static int bind_should_split_trg(void *ctx, const dms_trg_ctx_t *in,
+				 bool* out);
 
 int main(int argc, const char* argv[])
 {
@@ -276,20 +294,9 @@ static int bind_get_convex_envelope(void* ctx, const vtsp_points_t *input,
 	dms_output.num = output->num;
 	dms_output.index = output->index;
 	
+	TRY( opmem_dms_get_convex_envelope(&dms_input, &dms_output) );
 	
-	uint32_t memsize;
-	void *mem;
-	TRY_GOTO( dms_get_convex_envelope_sizeof_opmem(&dms_input, &memsize),
-		  ERROR_MALLOC );
-	TRY_PTR( malloc(memsize), mem, ERROR_MALLOC );
-
-	int status = dms_get_convex_envelope(&dms_input, &dms_output, mem);
-
-	free(mem);
-	
-	return status;
-ERROR_MALLOC:
-	return ERROR_MALLOC;
+	return SUCCESS;
 }
 
 
@@ -298,37 +305,28 @@ static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
 			 vtsp_mesh_t *output)
 {
 	dms_solid_t dms_solid;
+	TRY( cast_alloc_input_to_dms_solid(input_pts, input_envelope, &dms_solid) );
+	
+	TRY_GOTO( opmem_dms_verify_solid(&dms_solid), ERROR_SOLID );
+	
 	dms_extra_refine_t dms_refiner;
+	dms_refiner.ctx = 0;
+	dms_refiner.max_vtx = MAX_MESH_VTX;
+	dms_refiner.should_split_trg = &bind_should_split_trg;
+	
 	dms_xmesh_t dms_xmesh;
-	// PENDING CAST INPUT TO DMS INPUT
-	
-	uint32_t memsize;
-	void *opmem;
-	TRY( log_flush(stdout, "Verifying solid...") );
-	TRY( dms_verify_solid_sizeof_opmem(&dms_solid, &memsize) );
-	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+	// PENDING CAST OUTPUT TO DMS OUTPUT
 
-	char error_msg[100];
-	int status = dms_verify_solid(&dms_solid, error_msg, opmem);
-	free(opmem);
-	THROW(0 != status, status);
-	
-	TRY( log_flush(stdout, error_msg) );
-	
-
-	TRY( log_flush(stdout, "Meshing solid with DMS...") );
-	TRY( dms_get_mesh_sizeof_opmem(&dms_solid, &dms_refiner, &memsize) );
-	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
-
-	status = dms_get_mesh(&dms_solid, &dms_refiner, &dms_xmesh, opmem);
-	free(opmem);
-	THROW(0 != status, status);
+	TRY_GOTO( opmem_dms_get_mesh(&dms_solid, &dms_refiner, &dms_xmesh),
+		  ERROR_MESH );
 
 	// PENDING CAST OUTPUT TO VTSP MESH
-	
+	free_dms_solid(&dms_solid);
 	return SUCCESS;
-ERROR_MALLOC:
-	return ERROR_MALLOC;
+ERROR_MESH:
+ERROR_SOLID:
+	free_dms_solid(&dms_solid);
+	return ERROR;
 }
 
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
@@ -343,5 +341,95 @@ static int bind_integrate_path(const vtsp_field_t *field,
 			       float* output)
 {
 	// PENDING
+	return SUCCESS;
+}
+
+static int cast_alloc_input_to_dms_solid(const vtsp_points_t *input_pts,
+					 const vtsp_perm_t *input_envelope,
+					 dms_solid_t *output)
+{
+	output->vtx.num = input_pts->num;
+	output->vtx.data = (dms_point_t*) input_pts->pts;
+	output->holes.num = 0;
+	output->holes.data = NULL;
+
+	uint32_t nsgm = input_envelope->num;
+	output->sgm.num = nsgm;
+	TRY_PTR( malloc(nsgm * sizeof(*(output->sgm.data))), output->sgm.data,
+		 ERROR_MALLOC ); 
+	return SUCCESS;
+ERROR_MALLOC:
+	return ERROR_MALLOC;
+}
+
+static int free_dms_solid(dms_solid_t *input)
+{
+	free(input->sgm.data);
+	return SUCCESS;
+}
+
+static int opmem_dms_get_convex_envelope(const dms_points_t *input,
+					 dms_perm_t *output)
+{
+	uint32_t memsize;
+	void *opmem;
+	TRY( log_flush(stdout, "Getting convex envelope...") );
+	TRY( dms_get_convex_envelope_sizeof_opmem(input, &memsize) );
+	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+
+	TRY_GOTO( dms_get_convex_envelope(input, output, opmem), ERROR);
+
+	free(opmem);
+	return SUCCESS;
+ERROR:
+	free(opmem);
+ERROR_MALLOC:
+	return ERROR;
+}
+
+static int opmem_dms_verify_solid(const dms_solid_t *input)
+{
+	uint32_t memsize;
+	void *opmem;
+	TRY( log_flush(stdout, "Verifying solid...") );
+	TRY( dms_verify_solid_sizeof_opmem(input, &memsize) );
+	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+
+	char error_msg[100];
+	TRY_GOTO( dms_verify_solid(input, error_msg, opmem), ERROR );
+
+	free(opmem);
+	
+	TRY( log_flush(stdout, error_msg) );
+	return SUCCESS;
+ERROR:
+	free(opmem);
+ERROR_MALLOC:
+	return ERROR;
+}
+
+static int opmem_dms_get_mesh(const dms_solid_t *input,
+			      const dms_extra_refine_t *refine,
+			      dms_xmesh_t *output)
+{
+	uint32_t memsize;
+	void *opmem;
+	TRY( log_flush(stdout, "Meshing solid with DMS...") );
+	TRY( dms_get_mesh_sizeof_opmem(input, refine, &memsize) );
+	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
+
+	TRY_GOTO( dms_get_mesh(input, refine, output, opmem), ERROR);
+	
+	free(opmem);
+	return SUCCESS;
+ERROR:
+	free(opmem);
+ERROR_MALLOC:
+	return ERROR;
+}
+
+static int bind_should_split_trg(void *ctx, const dms_trg_ctx_t *in, bool* out)
+{
+	*out = false;
 	return SUCCESS;
 }

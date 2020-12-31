@@ -39,7 +39,6 @@ typedef struct {
 } dms_extra_refine_t;
 
 typedef struct {
-	dms_solid_t solid;
 	dms_mesh_t mesh;
 	dms_perm_t map_vtx;  /* Map solid's vertices to mesh nodes */
 	dms_perm_t *map_sgm; /* Map solid's segments to mesh edges */
