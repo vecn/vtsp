@@ -12,6 +12,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t num;
+	uint32_t n_alloc;
 	dms_point_t *data;
 } dms_points_t;
 
@@ -22,6 +23,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t num;
+	uint32_t n_alloc;
 	dms_edge_t *data;
 } dms_edges_t;
 
@@ -32,12 +34,14 @@ typedef struct {
 
 typedef struct {
 	uint32_t num;
+	uint32_t n_alloc;
 	dms_trg_t *data;
 } dms_trgs_t;
 
 typedef struct {
 	/* Subset's permutation of geom elems */
 	uint32_t num;
+	uint32_t n_alloc;
 	uint32_t *index;
 } dms_perm_t;
 
