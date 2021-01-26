@@ -32,9 +32,11 @@ typedef struct {
 
 typedef struct {
 	void *ctx;
-	int (*get_mesh)(void* ctx, const vtsp_points_t *input_pts,
+	int (*sizeof_ctx)(uint32_t max_vtx, uint32_t *output);
+	int (*init_ctx)(void *ctx, uint32_t max_vtx); 
+	int (*get_mesh)(void *ctx, const vtsp_points_t *input_pts,
 			const vtsp_perm_t *input_envelope,
-			vtsp_mesh_t *output);
+			vtsp_mesh_t *output_ref);
 } vtsp_binding_mesher_t;
 
 typedef struct {

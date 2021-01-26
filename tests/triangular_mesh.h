@@ -13,6 +13,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t num;
+	uint32_t n_alloc;
 	dms_sgm_t *data;
 } dms_sgms_t;
 
@@ -72,6 +73,6 @@ int dms_get_mesh_sizeof_output(const dms_solid_t *input,
 int dms_get_mesh(const dms_solid_t *input,
 		 const dms_extra_refine_t *refine,
 		 void *output, void *op_mem);
-int dms_get_mesh_ref_output(void *output, dms_xmesh_t *ref);
+int dms_get_mesh_ref_output(void *output, dms_xmesh_t **ref);
 
 #endif

@@ -10,8 +10,6 @@
 #include "vtsp.h"
 
 
-#define MAX_MESH_VTX 2000
-
 enum {
 	ERROR_MALLOC = 100
 };
@@ -19,6 +17,10 @@ enum {
 typedef struct {
 	float progress100;
 } state_t;
+
+typedef struct {
+	uint32_t max_vtx;
+} ctx_get_mesh_t;
 
 static int log_flush(FILE* fp, const char *msg);
 static int state_init(state_t *state);
@@ -63,11 +65,11 @@ static int opmem_dms_get_convex_envelope(const dms_points_t *input,
 static int opmem_dms_verify_solid(const dms_solid_t *input);
 static int opmem_dms_get_mesh(const dms_solid_t *input,
 			      const dms_extra_refine_t *refine,
-			      vtsp_mesh_t *output);
+			      void *output);
 
 static int bind_should_split_trg(void *ctx, const dms_trg_ctx_t *in,
 				 bool* out);
-static int cast_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output);
+static int copy_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output);
 
 int main(int argc, const char* argv[])
 {
@@ -305,22 +307,41 @@ static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
 			 const vtsp_perm_t *input_envelope,
 			 vtsp_mesh_t *output)
 {
+	ctx_get_mesh_t* c = (ctx_get_mesh_t*) ctx;
+	
 	dms_solid_t dms_solid;
 	TRY( cast_alloc_input_to_dms_solid(input_pts, input_envelope, &dms_solid) );
 	
-	TRY_GOTO( opmem_dms_verify_solid(&dms_solid), ERROR );
+	TRY_GOTO( log_flush(stdout, "GetMesh / Verify solid... "), ERROR_BAD_INPUT );
+	TRY_GOTO( opmem_dms_verify_solid(&dms_solid), ERROR_BAD_INPUT );
 	
 	dms_extra_refine_t dms_refiner;
 	dms_refiner.ctx = 0;
-	dms_refiner.max_nodes = MAX_MESH_VTX;
+	dms_refiner.max_nodes = c->max_vtx;
 	dms_refiner.should_split_trg = &bind_should_split_trg;
 	
-	TRY_GOTO( opmem_dms_get_mesh(&dms_solid, &dms_refiner, output), ERROR );
+	uint32_t memsize;
+	void* dms_output;
+	TRY_GOTO( log_flush(stdout, "GetMesh / Allocate output... "), ERROR_BAD_INPUT );
+	TRY_GOTO( dms_get_mesh_sizeof_output(&dms_solid, &dms_refiner, &memsize), ERROR_BAD_INPUT );
+	TRY_PTR( malloc(memsize), dms_output, ERROR_BAD_INPUT );
 	
-	free_dms_solid_artifacts(&dms_solid);
+	TRY_GOTO( log_flush(stdout, "GetMesh / Calculate mesh... "), ERROR );
+	TRY_GOTO( opmem_dms_get_mesh(&dms_solid, &dms_refiner, dms_output), ERROR );
+	
+	dms_xmesh_t *dms_xmesh;
+	TRY_GOTO( dms_get_mesh_ref_output(dms_output, &dms_xmesh), ERROR );
+	
+	TRY_GOTO( log_flush(stdout, "GetMesh / Copy to output... "), ERROR );
+	TRY_GOTO( copy_mesh(dms_xmesh, output), ERROR );
+	
+	free(dms_output);
+	TRY( free_dms_solid_artifacts(&dms_solid) );
 	return SUCCESS;
 ERROR:
-	free_dms_solid_artifacts(&dms_solid);
+	free(dms_output);
+ERROR_BAD_INPUT:
+	TRY( free_dms_solid_artifacts(&dms_solid) );
 	return ERROR;
 }
 
@@ -351,8 +372,16 @@ static int cast_alloc_input_to_dms_solid(const vtsp_points_t *input_pts,
 	uint32_t nsgm = input_envelope->num;
 	output->sgm.num = nsgm;
 	TRY_PTR( malloc(nsgm * sizeof(*(output->sgm.data))), output->sgm.data,
-		 ERROR_MALLOC ); 
+		 ERROR_MALLOC );
+
+	uint32_t i;
+	for (i = 0; i < nsgm; i++) {
+		output->sgm.data[i].p1 = input_envelope->index[i];
+		output->sgm.data[i].p2 = input_envelope->index[(i+1) % nsgm];
+	}
+	
 	return SUCCESS;
+	
 ERROR_MALLOC:
 	return ERROR_MALLOC;
 }
@@ -405,32 +434,19 @@ ERROR_MALLOC:
 
 static int opmem_dms_get_mesh(const dms_solid_t *input,
 			      const dms_extra_refine_t *refine,
-			      vtsp_mesh_t *output)
+			      void *output)
 {
 	uint32_t memsize;
 	void *opmem;
 	TRY( log_flush(stdout, "Meshing solid with DMS...") );
 	TRY( dms_get_mesh_sizeof_opmem(input, refine, &memsize) );
 	TRY_PTR( malloc(memsize), opmem, ERROR_MALLOC );
-
-	void* dms_output;
-	TRY_GOTO( dms_get_mesh_sizeof_output(input, refine, &memsize), ERROR_OPMEM );
-	TRY_PTR( malloc(memsize), dms_output, ERROR_OPMEM );
 	
-	TRY_GOTO( dms_get_mesh(input, refine, dms_output, opmem), ERROR_OUTPUT);
-		
-	dms_xmesh_t dms_xmesh;
-	TRY_GOTO( dms_get_mesh_ref_output(dms_output, &dms_xmesh),
-		  ERROR_OUTPUT );
+	TRY_GOTO( dms_get_mesh(input, refine, output, opmem), ERROR);
 
-	TRY_GOTO( cast_mesh(&dms_xmesh, output), ERROR_OUTPUT );
-	
-	free(dms_output);
 	free(opmem);
 	return SUCCESS;
-ERROR_OUTPUT:
-	free(dms_output);
-ERROR_OPMEM:
+ERROR:
 	free(opmem);
 ERROR_MALLOC:
 	return ERROR;
@@ -442,8 +458,22 @@ static int bind_should_split_trg(void *ctx, const dms_trg_ctx_t *in, bool* out)
 	return SUCCESS;
 }
 
-static int cast_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output)
+static int copy_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output)
 {
-	// PENDING
+	THROW(input->mesh.nodes.num > output->nodes.n_alloc, ERROR);
+	output->nodes.num = input->mesh.nodes.num;
+
+	uint32_t i = 0;
+	for (i = 0; i < output->nodes.num; i++) {
+		output->nodes.pts[i].x = input->mesh.nodes.data[i].x;
+		output->nodes.pts[i].y = input->mesh.nodes.data[i].y;
+	}
+
+	THROW(input->mesh.trgs.num > output->adj.n_alloc, ERROR);
+	output->adj.num = input->mesh.trgs.num;
+	// PENDING:
+	// + Finish copying mesh
+	// + Set binding for *sizeof_ctx and *init_ctx
+	// + Init vtsp_mesh_t in *init_ctx
 	return SUCCESS;
 }
