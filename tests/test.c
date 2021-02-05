@@ -18,10 +18,6 @@ typedef struct {
 	float progress100;
 } state_t;
 
-typedef struct {
-	uint32_t max_vtx;
-} ctx_get_mesh_t;
-
 static int log_flush(FILE* fp, const char *msg);
 static int state_init(state_t *state);
 static int state_clean(state_t *state);
@@ -306,9 +302,7 @@ static int bind_get_convex_envelope(void* ctx, const vtsp_points_t *input,
 static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
 			 const vtsp_perm_t *input_envelope,
 			 vtsp_mesh_t *output)
-{
-	ctx_get_mesh_t* c = (ctx_get_mesh_t*) ctx;
-	
+{	
 	dms_solid_t dms_solid;
 	TRY( cast_alloc_input_to_dms_solid(input_pts, input_envelope, &dms_solid) );
 	
@@ -317,7 +311,7 @@ static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
 	
 	dms_extra_refine_t dms_refiner;
 	dms_refiner.ctx = 0;
-	dms_refiner.max_nodes = c->max_vtx;
+	dms_refiner.max_nodes = output->nodes.n_alloc; /* Max nodes allocated for output*/
 	dms_refiner.should_split_trg = &bind_should_split_trg;
 	
 	uint32_t memsize;
@@ -460,7 +454,8 @@ static int bind_should_split_trg(void *ctx, const dms_trg_ctx_t *in, bool* out)
 
 static int copy_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output)
 {
-	THROW(input->mesh.nodes.num > output->nodes.n_alloc, ERROR);
+	/* Copy nodes */
+	THROW( input->mesh.nodes.num > output->nodes.n_alloc, ERROR );
 	output->nodes.num = input->mesh.nodes.num;
 
 	uint32_t i = 0;
@@ -469,11 +464,21 @@ static int copy_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output)
 		output->nodes.pts[i].y = input->mesh.nodes.data[i].y;
 	}
 
-	THROW(input->mesh.trgs.num > output->adj.n_alloc, ERROR);
+	/* Copy triangles */
+	THROW( input->mesh.trgs.num > output->adj.n_alloc, ERROR );
 	output->adj.num = input->mesh.trgs.num;
-	// PENDING:
-	// + Finish copying mesh
-	// + Set binding for *sizeof_ctx and *init_ctx
-	// + Init vtsp_mesh_t in *init_ctx
+	for (i = 0; i < output->adj.num; i++ ) {
+		output->adj.trgs[i].n1 = input->mesh.trgs.data[i].n1;
+		output->adj.trgs[i].n2 = input->mesh.trgs.data[i].n2;
+		output->adj.trgs[i].n3 = input->mesh.trgs.data[i].n3;
+	}
+
+	/* Copy vtx map */
+	THROW( input->map_vtx.num > output->map_vtx.n_alloc, ERROR );
+	output->map_vtx.num = input->map_vtx.num;
+	for (i = 0; i < output->map_vtx.num; i++) {
+		output->map_vtx.index[i] = input->map_vtx.index[i];
+	}
+	
 	return SUCCESS;
 }
