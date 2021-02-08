@@ -5,6 +5,7 @@
 
 #include "delaunay_trg.h"
 #include "triangular_mesh.h"
+#include "tsp_io.h"
 
 #include "try_macros.h"
 #include "vtsp.h"
@@ -18,10 +19,13 @@ typedef struct {
 	float progress100;
 } state_t;
 
+
+static int execute_vtsp(const char *input_filename);
 static int log_flush(FILE* fp, const char *msg);
 static int state_init(state_t *state);
 static int state_clean(state_t *state);
-static int input_allocate_and_load(vtsp_points_t *input);
+static int input_allocate_and_load(const char* input_filename,
+				   vtsp_points_t *output);
 static int input_free(vtsp_points_t *input);
 static int output_allocate(const vtsp_points_t *input, vtsp_perm_t *output);
 static int output_free(vtsp_perm_t *output);
@@ -69,9 +73,17 @@ static int copy_mesh(const dms_xmesh_t *input, vtsp_mesh_t *output);
 
 int main(int argc, const char* argv[])
 {
+	THROW( argc < 2, ERROR );
+	
+	TRY( execute_vtsp(argv[1]) );
+	return SUCCESS;
+}
+
+int execute_vtsp(const char *input_filename)
+{
        	vtsp_points_t input;
 	TRY( log_flush(stdout, "Loading input...") );
-	TRY( input_allocate_and_load(&input) );
+	TRY( input_allocate_and_load(input_filename, &input) );
 	
 	vtsp_perm_t output;
 	TRY_GOTO( log_flush(stdout, "Allocating output... "), ERROR_OUTPUT );
@@ -133,23 +145,31 @@ static int state_clean(state_t *state)
 	return SUCCESS;
 }
 
-static int input_allocate_and_load(vtsp_points_t *input)
+static int input_allocate_and_load(const char* input_filename,
+				   vtsp_points_t *output)
 {
-	// PENDING: Load from file
-	input->num = 10;
-	size_t size = input->num * sizeof(*(input->pts));
-	TRY_PTR( malloc(size), input->pts, ERROR_MALLOC );
+	uint32_t npts;
+	TRY_GOTO( vtsp_read_problem_npts(input_filename, &npts), ERROR_FILE );
 
-	int i;
-	for (i = 0; i < input->num; i++) {
-		input->pts[i].x = i;
-		input->pts[i].y = i*i;
-	}
+	output->num = npts;
+	size_t size = output->num * sizeof(*(output->pts));
+	TRY_PTR( malloc(size), output->pts, ERROR_MALLOC );
 	
+	TRY_GOTO( vtsp_read_problem_size(input_filename, output), ERROR_READING );
+
 	return SUCCESS;
+ERROR_FILE:
+	TRY( log_flush(stderr, "Error reading file") );
+	return ERROR;
 ERROR_MALLOC:
-	return ERROR_MALLOC;
+	TRY( log_flush(stderr, "Error allocating input") );
+	return ERROR;
+ERROR_READING:
+	TRY( log_flush(stderr, "Error reading input") );
+	free(output->pts);
+	return ERROR;
 }
+
 
 static int input_free(vtsp_points_t *input)
 {
