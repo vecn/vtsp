@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +45,15 @@ static int split_str(char *line, uint32_t len, char sep,
 static int trim_ref(char *line, uint32_t len, char** ref, uint32_t *ref_len);
 static int is_blank(char c);
 static int parse_int(const char* input, int *output);
+static int read_coordinate(const char *line, uint32_t len, vtsp_points_t *output);
+static int read_metadata(const char *line, uint32_t len,
+			 bool *reading_coords, vtsp_points_t *output);
+static int log_name(const char *name);
+static int validate_type(const char* type);
+static int log_comment(const char *comment);
+static int get_dimension(const char *dim, vtsp_points_t *output);
+static int validate_edge_weight_type(const char *edge_type);
+static int log_ignored_line(const char *line);
 
 int vtsp_read_problem_npts(const char *input_filename, uint32_t *output)
 {
@@ -84,7 +94,7 @@ ERROR_CLOSE:
 
 int vtsp_read_tour(const char *input_filename, vtsp_perm_t *output)
 {
-	// PEDNING
+	// PENDING
 }
 
 int vtsp_write_tour(const vtsp_perm_t *input, const char *output_filename) {
@@ -120,17 +130,20 @@ static int read_problem(FILE *fp, vtsp_points_t *output)
 	char line[255];
 	uint32_t len;
 	int status;
-	char *lpart, *rpart;
-	uint32_t llen, rlen;
-	int type;
+	bool reading_coords = false;
 	while ((status = get_line(fp, 255, line, &len)) == 0) {
-		// PENDING: Operate depending on line type
+		if (reading_coords) {
+			TRY( read_coordinate(line, len, output) );
+		} else {
+			TRY( read_metadata(line, len, &reading_coords, output) );
+		}
 	}
+	THROW( !finish_coords, ERROR );
 	TRHOW ( status > 0, status );
 
 	return SUCCESS;
 }
-
+	
 static int get_line(FILE *fp, uint32_t max_len, char *line, uint32_t *len)
 {
 	/* Max size must be 2 chars longer than max line,
@@ -224,4 +237,109 @@ static int parse_int(const char* input, int *output)
 {
 	*output = strtol(input, 0, 0);
 	return SUCCESS;
+}
+
+static int read_coordinate(const char *line, uint32_t len, vtsp_points_t *output)
+{
+	// PENDING
+	return SUCCESS;
+}
+
+static int read_metadata(const char *line, uint32_t len,
+			 bool *reading_coords, vtsp_points_t *output)
+{
+	char *lpart, *rpart;
+	uint32_t llen, rlen;
+	int type;
+	TRY( split_str(line, len, ':', &lpart, &llen, &rpart, &rlen) );
+	TRY( get_line_type(lpart, llen, &type) );
+	switch (type) {
+	case LINE_NAME:
+		TRY( log_name(rpart) );
+		break;
+	case LINE_TYPE:
+		TRY( validate_type(rpart) );
+		break;
+	case LINE_COMMENT:
+		TRY( log_comment(rpart) );
+		break;
+	case LINE_DIMENSION:
+		TRY( get_dimension(rpart, output) );
+		break;
+	case LINE_EDGE_WEIGHT_TYPE:
+		TRY( validate_edge_weight_type(rpart) );
+		break;
+	case LINE_NODE_COORD_SECTION:
+		*reading_coords = true;
+		break;
+	case LINE_EOF:
+		*reading_coords = false;
+		break;
+	case LINE_UNKNOWN:
+	default:
+		TRY( log_ignored_line(line) );
+		break;
+	}
+	return SUCCESS;
+}
+
+static int log_name(const char *name)
+{
+	char message[255];
+	TRY_NONEG( sprtinf(message, "Reading TSP with name \"%s\"", name), ERROR);
+	TRY( log_flush(stdout, message) );
+	return SUCCESS;
+ERROR:
+	TRY( log_flush(stderr, "Error reading name") );
+	return ERROR;
+}
+
+static int validate_type(const char* type)
+{
+	THROW( strcmp(type, "TSP") != 0, ERROR );
+	return SUCCESS;
+ERROR:
+	TRY( log_flush(stderr, "Error reading type") );
+	return ERROR;
+}
+
+static int log_comment(const char *comment)
+{
+	char message[255];
+	TRY_NONEG( sprtinf(message, "Reading TSP with comment \"%s\"", comment), ERROR);
+	TRY( log_flush(stdout, message) );
+	return SUCCESS;
+ERROR:
+	TRY( log_flush(stderr, "Error reading comment") );
+	return ERROR;
+}
+
+static int get_dimension(const char *dim, vtsp_points_t *output)
+{
+	int val;
+	TRY( parse_int(dim, val) );
+	THROW( output->n_alloc < val, ERROR );
+	output->num = val;
+	return SUCCESS;
+}
+
+static int validate_edge_weight_type(const char *edge_type)
+{
+	THROW( strcmp(type, "EUC_2D") != 0, ERROR );
+	return SUCCESS;
+ERROR:
+	TRY( log_flush(stderr, "Error reading edge type") );
+	return ERROR;	
+}
+
+
+static int log_ignored_line(const char *line)
+{
+	char message[255];
+	TRY_NONEG( sprtinf(message, "Ignored line \"%s\"", line), ERROR);
+	TRY( log_flush(stdout, message) );
+	return SUCCESS;
+ERROR:
+	TRY( log_flush(stderr, "Error reading 'unknown' line") );
+	return ERROR;
 }
