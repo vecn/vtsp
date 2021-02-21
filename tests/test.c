@@ -129,9 +129,11 @@ ERROR_OUTPUT:
 
 static int log_flush(FILE* fp, const char *msg)
 {
-	fprintf(fp, "%s\n", msg);
-	fflush(fp);
+	TRY_NONEG( fprintf(fp, "%s\n", msg), ERROR );
+	TRY_GOTO( fflush(fp), ERROR );
 	return SUCCESS;
+ERROR:
+	return ERROR;
 }
 
 static int state_init(state_t *state)
@@ -155,7 +157,7 @@ static int input_allocate_and_load(const char* input_filename,
 	size_t size = output->num * sizeof(*(output->pts));
 	TRY_PTR( malloc(size), output->pts, ERROR_MALLOC );
 	
-	TRY_GOTO( vtsp_read_problem_size(input_filename, output), ERROR_READING );
+	TRY_GOTO( vtsp_read_problem(input_filename, output), ERROR_READING );
 
 	return SUCCESS;
 ERROR_FILE:
