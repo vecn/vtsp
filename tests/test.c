@@ -264,7 +264,7 @@ static int bind_mesher(vtsp_binding_mesher_t *mesher)
 
 static int bind_heat(vtsp_binding_heat_t *heat)
 {
-	heat->ctx = 0; // PENDING
+	heat->ctx = 0;
 	heat->solve_heat = &bind_solve_heat;
 	return SUCCESS;
 }
@@ -364,8 +364,15 @@ ERROR_BAD_INPUT:
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
 			   vtsp_field_t *output)
 {
-	// PENDING
+	uint32_t memsize;
+	void *opmem
+
+	TRY_GOTO( log_flush(stdout, "SolveHeat / Allocating memory... "), ERROR );
+	TRY_GOTO( ERROR ); //PENDING
+	
 	return SUCCESS;
+ERROR:
+	return ERROR;
 }
 
 static int bind_integrate_path(const vtsp_field_t *field,
