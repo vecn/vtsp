@@ -9,7 +9,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t n1, n2, n3;
-}
+} fem_elem_t;
 
 typedef struct {
 	uint32_t n_nodes;
@@ -27,38 +27,39 @@ typedef struct {
 typedef struct {
 	uint32_t elem;
 	uint32_t n1, n2;
-} fem_sgm_t;
+} fem_edge_t;
 
 typedef struct {
 	uint32_t n;
-	fem_sgm_t *elem;
+	fem_edge_t *edges;
 	float *values;	
-} fem_fix_sgms_t;
+} fem_fix_edges_t;
 
 typedef struct {
-	fem_fix_nodes_t *on_nodes;
-	fem_fix_sgms_t *on_sgms;
+	fem_fix_nodes_t on_nodes;
+	fem_fix_edges_t on_edges;
 
 } fem_fix_temperature_t;
 
 typedef struct {
-	fem_fix_nodes_t *on_nodes;
-	fem_fix_sgms_t *on_sgms;
+	fem_fix_nodes_t on_nodes;
+	fem_fix_edges_t on_edges;
 
 } fem_fix_flux_t;
 
 typedef struct {
-	fem_fix_temperature_t *t;
-	fem_fix_flux_t *flux;
+	fem_fix_temperature_t temp;
+	fem_fix_flux_t flux;
 } fem_cond_t;
 
 typedef struct {
 	float diffusion;
-	fem_mesh_t *mesh;
-	fem_cond_t *cond;
+	fem_mesh_t mesh;
+	fem_cond_t cond;
 } fem_input_t;
 
-int fem_solve_heat_sizeof_opmem(const fem_input_t *input);
+int fem_solve_heat_sizeof_opmem(const fem_input_t *input,
+				const uint32_t *memsize);
 
 int fem_solve_heat(const fem_input_t *input,
 		   const float *output,

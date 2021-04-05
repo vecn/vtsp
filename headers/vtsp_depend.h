@@ -40,6 +40,7 @@ typedef struct {
 typedef struct {
 	void *ctx;
 	int (*solve_heat)(void* ctx, const vtsp_mesh_t *input,
+			  float input_temperature_vtx,
 			  vtsp_field_t *output);
 } vtsp_binding_heat_t;
 

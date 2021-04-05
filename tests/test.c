@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "delaunay_trg.h"
+#include "fem_heat.h"
 #include "triangular_mesh.h"
 #include "tsp_io.h"
 
@@ -51,6 +52,7 @@ static int bind_get_mesh(void* ctx, const vtsp_points_t *input_pts,
 			 const vtsp_perm_t *input_envelope,
 			 vtsp_mesh_t *output);
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
+			   float input_temperature_vtx,
 			   vtsp_field_t *output);
 static int bind_integrate_path(const vtsp_field_t *field,
 			       const vtsp_points_t *points,
@@ -236,7 +238,7 @@ static int bind_logger(vtsp_binding_logger_t *logger)
 
 static int bind_drawer(vtsp_binding_drawer_t *drawer)
 {
-	drawer->ctx = 0; // PENDING
+	drawer->ctx = 0;// PENDING
 	drawer->draw_state = &bind_draw_state;
 	return SUCCESS;
 }
@@ -362,16 +364,63 @@ ERROR_BAD_INPUT:
 }
 
 static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
+			   float input_temperature_vtx,
 			   vtsp_field_t *output)
 {
-	uint32_t memsize;
-	void *opmem
-
-	TRY_GOTO( log_flush(stdout, "SolveHeat / Allocating memory... "), ERROR );
-	TRY_GOTO( ERROR ); //PENDING
+	fem_cond_t fem_cond;
+	fem_cond.temp.on_nodes.n = input->map_vtx.num;
+	fem_cond.temp.on_nodes.index = input->map_vtx.index;
+	fem_cond.temp.on_edges.n = 0;
+	fem_cond.temp.on_edges.edges = 0;
+	fem_cond.temp.on_edges.values = 0;
+	fem_cond.flux.on_nodes.n = 0;
+	fem_cond.flux.on_nodes.index = 0;
+	fem_cond.flux.on_nodes.values = 0;
+	fem_cond.flux.on_edges.n = 0;
+	fem_cond.flux.on_edges.edges = 0;
+	fem_cond.flux.on_edges.values = 0;
 	
+	uint32_t node_values_memsize = input->nodes.num * sizeof(*fem_cond.temp.on_nodes.values);
+	float *node_values;
+
+	TRY( log_flush(stdout, "SolveHeat / Allocating conditions memory... ") );
+	TRY_PTR( malloc(node_values_memsize), node_values, ERROR_ALLOCATING_COND );
+
+	uint32_t i;
+	for (i = 0; i < input->nodes.num; i++) {
+		node_values[i] = input_temperature_vtx;
+	}
+	fem_cond.temp.on_nodes.values = node_values;
+	
+	fem_mesh_t fem_mesh;
+	fem_mesh.n_nodes = input->nodes.num;
+	fem_mesh.nodes = (fem_node_t*) input->nodes.pts;
+	fem_mesh.n_elems = input->adj.num;
+	fem_mesh.elems = (fem_elem_t*) input->adj.trgs;
+	
+	fem_input_t fem_input;
+	fem_input.diffusion = 1.0f;
+	fem_input.mesh = fem_mesh;
+	fem_input.cond = fem_cond;
+	
+	uint32_t memsize;
+	void *opmem;
+
+	TRY( log_flush(stdout, "SolveHeat / Allocating operational memory... ") );
+	TRY( fem_solve_heat_sizeof_opmem(&fem_input, &memsize) );
+
+	TRY_PTR( malloc(memsize), opmem, ERROR_ALLOCATING );
+	
+	TRY_GOTO( log_flush(stdout, "SolveHeat / Solving... "), ERROR );
+	TRY_GOTO( fem_solve_heat(&fem_input, output->values, opmem), ERROR );
+
+	free(opmem);
 	return SUCCESS;
 ERROR:
+	free(opmem);
+ERROR_ALLOCATING:
+	free(node_values);
+ERROR_ALLOCATING_COND:
 	return ERROR;
 }
 
