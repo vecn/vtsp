@@ -5,6 +5,7 @@
 
 #include "delaunay_trg.h"
 #include "fem_heat.h"
+#include "graphics.h"
 #include "triangular_mesh.h"
 #include "tsp_io.h"
 
@@ -19,6 +20,13 @@ enum {
 typedef struct {
 	float progress100;
 } state_t;
+
+typedef struct {
+	int counter;
+	char *path_prefix;
+	uint32_t width;
+	uint32_t height;
+} draw_ctx;
 
 
 static int execute_vtsp(const char *input_filename);
@@ -238,7 +246,13 @@ static int bind_logger(vtsp_binding_logger_t *logger)
 
 static int bind_drawer(vtsp_binding_drawer_t *drawer)
 {
-	drawer->ctx = 0;// PENDING
+	draw_ctx ctx;
+	ctx.counter = 0;
+	ctx.path_prefix = "draw";
+	ctx.width = 800;
+	ctx.height = 600;
+	
+	drawer->ctx = &ctx;
 	drawer->draw_state = &bind_draw_state;
 	return SUCCESS;
 }
@@ -294,8 +308,31 @@ static int bind_draw_state(void *ctx, const vtsp_points_t *points,
 			   const vtsp_mesh_t *mesh, const vtsp_field_t *field,
 			   const vtsp_perm_t *path)
 {
-	// PENDING
+	draw_ctx *dctx = (draw_ctx*) ctx;
+
+	char filename[100];
+	int n = snprintf(filename, 100, "%s-%i.png", dctx->path_prefix, dctx->counter);
+	THROW( n < 0 || n > 99, ERROR );
+	
+	dctx->counter += 1;
+
+	vtsp_graphics_t *vtsp_graphics;
+	TRY_GOTO( vtsp_allocate_graphics_ctx(&vtsp_graphics, dctx->width, dctx->height), ERROR );
+	
+	TRY_GOTO( vtsp_fill_background(vtsp_graphics), ERROR_GRAPHICS );
+	TRY_GOTO( vtsp_draw_field(vtsp_graphics, mesh, field), ERROR_GRAPHICS );
+	TRY_GOTO( vtsp_draw_mesh(vtsp_graphics, mesh), ERROR_GRAPHICS );
+	TRY_GOTO( vtsp_draw_path(vtsp_graphics, points, path), ERROR_GRAPHICS );
+	TRY_GOTO( vtsp_draw_points(vtsp_graphics, points), ERROR_GRAPHICS );
+	TRY_GOTO( vtsp_draw_save_png(vtsp_graphics, filename), ERROR_GRAPHICS );
+	
+	TRY( vtsp_free_graphics_ctx(vtsp_graphics) );
+	
 	return SUCCESS;
+ERROR_GRAPHICS:
+	TRY( vtsp_free_graphics_ctx(vtsp_graphics) );
+ERROR:
+	return ERROR;
 }
 
 static int bind_report_progress(void *ctx, float percent)
