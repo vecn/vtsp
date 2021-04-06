@@ -5,12 +5,12 @@
 
 #include "delaunay_trg.h"
 #include "fem_heat.h"
-#include "graphics.h"
 #include "triangular_mesh.h"
 #include "tsp_io.h"
 
 #include "try_macros.h"
 #include "vtsp.h"
+#include "vtsp_graphics.h"
 #include "vtsp_mesh_integral.h"
 
 
