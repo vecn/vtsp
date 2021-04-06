@@ -47,8 +47,9 @@ typedef struct {
 typedef struct {
 	void *ctx;
 	int (*integrate_path)(const vtsp_field_t *field,
-			      const vtsp_points_t *points,
-			      float* output);
+			      const vtsp_mesh_t *mesh,
+			      uint32_t p1, uint32_t p2,
+			      double* output);
 } vtsp_binding_integral_t;
 
 typedef struct {

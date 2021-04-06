@@ -27,6 +27,7 @@ typedef struct {
 } vtsp_perm_t;
 
 typedef struct {
+	/* This field must be associated to a mesh */
 	uint32_t num;
 	uint32_t n_alloc;
 	float *values;

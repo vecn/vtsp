@@ -11,6 +11,7 @@
 
 #include "try_macros.h"
 #include "vtsp.h"
+#include "vtsp_mesh_integral.h"
 
 
 enum {
@@ -63,8 +64,9 @@ static int bind_solve_heat(void* ctx, const vtsp_mesh_t *input,
 			   float input_temperature_vtx,
 			   vtsp_field_t *output);
 static int bind_integrate_path(const vtsp_field_t *field,
-			       const vtsp_points_t *points,
-			       float* output);
+			       const vtsp_mesh_t *mesh,
+			       uint32_t p1, uint32_t p2,
+			       double* output);
 static int cast_alloc_input_to_dms_solid(const vtsp_points_t *input_pts,
 					 const vtsp_perm_t *input_envelope,
 					 dms_solid_t *output);
@@ -287,7 +289,7 @@ static int bind_heat(vtsp_binding_heat_t *heat)
 
 static int bind_integral(vtsp_binding_integral_t *integral)
 {
-	integral->ctx = 0; // PENDING
+	integral->ctx = 0;
 	integral->integrate_path = &bind_integrate_path;
 	return SUCCESS;
 }
@@ -462,10 +464,14 @@ ERROR_ALLOCATING_COND:
 }
 
 static int bind_integrate_path(const vtsp_field_t *field,
-			       const vtsp_points_t *points,
-			       float* output)
+			       const vtsp_mesh_t *mesh,
+			       uint32_t p1, uint32_t p2,
+			       double* output)
 {
-	// PENDING
+	uint32_t n1 = mesh->map_vtx.index[p1];
+	uint32_t n2 = mesh->map_vtx.index[p2];
+	TRY( vtsp_integrate_path(mesh, field, n1, n2, output) );
+	
 	return SUCCESS;
 }
 
